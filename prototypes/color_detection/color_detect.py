@@ -1,8 +1,20 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
+np.set_printoptions(threshold=np.inf)
 filename = "sample_image.png"
+
+def RGB_2_YUV(R,G,B):
+    Y = (12062107 *B + 886* (70100* G + 35707 *R))/105807109
+    U = (4 * (3385827488 + 13225875 * B - 8762500 * G - 4463375 * R))/105807109
+    V = -(4 *(-3385827488 + 2150875 *B + 11075000* G - 13225875* R))/105807109
+    return Y,U,V
+def YUV_2_RGB(Y,U,V):
+    R = Y + 1.402 * (V - 128)
+    G = Y - 0.34414 * (U - 128) - 0.71414 * (V - 128)
+    B = Y + 1.772 * (U - 128)
+    return R,G,B
+#for green we need very low U and V
 y_range=[50,200]
 u_range =[0,120]
 v_range=[0,120]
@@ -18,13 +30,30 @@ for y in range(YUV.shape[0]):
         if YUV[y,x,0] >= y_range[0] and YUV[y,x,0] <= y_range[1] and YUV[y,x,1]>=u_range[0] and YUV[y,x,1]<=u_range[1] and YUV[y,x,2]>=v_range[0] and YUV[y,x,2]>=v_range[1]:
             Filtered[y,x] = 1
 
-plt.figure();
-RGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB);
-plt.imshow(RGB);
-plt.title('Original image');
+
+Movement =np.zeros([YUV.shape[0], YUV.shape[1]])
+Max = 0.25
+# Filtered=Filtered.transpose()
+
+for i in range(0,len(Filtered)):
+    percent = sum(Filtered[i])/len(Filtered[i])
+    if percent<Max:
+        Movement[i] = np.zeros(YUV.shape[1])
+    else:
+        Movement[i] = Filtered[i]
+
+# Filtered = Filtered.transpose()
+plt.figure()
+RGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+plt.imshow(RGB)
+plt.title('Original image')
 
 plt.figure()
-plt.imshow(Filtered);
+plt.imshow(Filtered)
 plt.title('Filtered image')
+
+plt.figure()
+plt.imshow(Movement)
+plt.title('Parsed image')
 
 plt.show()
