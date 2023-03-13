@@ -1,4 +1,5 @@
 import cv2
+from sklearn.cluster import KMeans,DBSCAN
 import numpy as np
 import matplotlib.pyplot as plt
 np.set_printoptions(threshold=np.inf)
@@ -14,6 +15,7 @@ def YUV_2_RGB(Y,U,V):
     G = Y - 0.34414 * (U - 128) - 0.71414 * (V - 128)
     B = Y + 1.772 * (U - 128)
     return R,G,B
+
 #for green we need very low U and V
 y_range=[50,200]
 u_range =[0,120]
@@ -45,15 +47,27 @@ for i in range(0,len(Filtered)):
 # Filtered = Filtered.transpose()
 plt.figure()
 RGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-plt.imshow(RGB)
+plt.imshow(YUV)
 plt.title('Original image')
 
 plt.figure()
 plt.imshow(Filtered)
 plt.title('Filtered image')
 
+cluster = KMeans(n_clusters=3)
+X = YUV.reshape(-1,1)
+
+kmeans = cluster.fit(X)
+lab = kmeans.labels_
+img_clusters = 128/(lab.max() -lab.min()) * lab
+img_clusters = img_clusters.reshape(YUV.shape)
+centers = cluster.cluster_centers_
+print(centers)
+
 plt.figure()
-plt.imshow(Movement)
-plt.title('Parsed image')
+plt.imshow(img_clusters)
+plt.title('K_Means cluster image')
+
+
 
 plt.show()
