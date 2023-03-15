@@ -23,6 +23,8 @@
  * A module that detects contours of obstacles as used in autonomous drone races.
  */
 
+
+
 #ifndef DETECT_CONTOUR_H
 #define DETECT_CONTOUR_H
 

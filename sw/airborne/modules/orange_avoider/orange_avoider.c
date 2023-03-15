@@ -116,6 +116,9 @@ void orange_avoider_periodic(void)
     obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
   }
 
+
+  
+
   // bound obstacle_free_confidence
   Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
