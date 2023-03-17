@@ -1,22 +1,3 @@
-/*
- * Copyright (C) Roland Meertens
- *
- * This file is part of paparazzi
- *
- */
-/**
- * @file "modules/orange_avoider/orange_avoider.c"
- * @author Roland Meertens
- * Example on how to use the colours detected to avoid orange pole in the cyberzoo
- * This module is an example module for the course AE4317 Autonomous Flight of Micro Air Vehicles at the TU Delft.
- * This module is used in combination with a color filter (cv_detect_color_object) and the navigation mode of the autopilot.
- * The avoidance strategy is to simply count the total number of orange pixels. When above a certain percentage threshold,
- * (given by color_count_frac) we assume that there is an obstacle and we turn.
- *
- * The color filter settings are set using the cv_detect_color_object. This module can run multiple filters simultaneously
- * so you have to define which filter to use with the ORANGE_AVOIDER_VISUAL_DETECTION_ID setting.
- */
-
 #include "modules/orange_avoider/orange_avoider.h"
 #include "firmwares/rotorcraft/navigation.h"
 #include "generated/airframe.h"
@@ -37,66 +18,57 @@
 #define VERBOSE_PRINT(...)
 #endif
 
+float oa_color_count_frac = 0.18f; // ***HAVE TO DEFINE THIS HERE TO GET IT TO COMPILE
+
+// Define navigation states
+enum navigation_state_t {
+  SAFE,
+  OBSTACLE_LEFT,
+  OBSTACLE_RIGHT,
+  OBSTACLE_MIDDLE,
+  OUT_OF_BOUNDS,
+};
+
+
+
+// define variables
+enum navigation_state_t navigation_state = SAFE;
+float flowleft = 0.0f;
+float flowright = 0.0f;
+float flowmiddle = 0.0f;
+
+// float flowcombined = flowleft + flowright + flowmiddle;
+
+float flowleft_threshold = 5.0f;
+float flowright_threshold = 5.0f;
+float flowmiddle_threshold = 5.0f;
+
+float flowleft_temp = 0.0f;
+float flowright_temp = 0.0f;
+
+// float flowcombined_treshold = 10.0f;
+// if flowcombined > flowcombined_treshold, then turn 180 degrees (run away)
+
+float heading_increment = 5.f; 
+float maxDistance = 2.25;   
+
+// define functions
 static uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 static uint8_t increase_nav_heading(float incrementDegrees);
-static uint8_t chooseRandomIncrementAvoidance(void);
 
-enum navigation_state_t {
-  SAFE,
-  OBSTACLE_FOUND,
-  SEARCH_FOR_SAFE_HEADING,
-  OUT_OF_BOUNDS
-};
 
-// define settings
-float oa_color_count_frac = 0.18f;
-
-// define and initialise global variables
-enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
-int32_t color_count = 0;                // orange color count from color filter for obstacle detection
-int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
-float heading_increment = 5.f;          // heading angle increment [deg]
-float maxDistance = 2.25;               // max waypoint displacement [m]
-
-const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
-
-/*
- * This next section defines an ABI messaging event (http://wiki.paparazziuav.org/wiki/ABI), necessary
- * any time data calculated in another module needs to be accessed. Including the file where this external
- * data is defined is not enough, since modules are executed parallel to each other, at different frequencies,
- * in different threads. The ABI event is triggered every time new data is sent out, and as such the function
- * defined in this file does not need to be explicitly called, only bound in the init function
- */
-#ifndef ORANGE_AVOIDER_VISUAL_DETECTION_ID
-#define ORANGE_AVOIDER_VISUAL_DETECTION_ID ABI_BROADCAST
-#endif
-static abi_event color_detection_ev;
-static void color_detection_cb(uint8_t __attribute__((unused)) sender_id,
-                               int16_t __attribute__((unused)) pixel_x, int16_t __attribute__((unused)) pixel_y,
-                               int16_t __attribute__((unused)) pixel_width, int16_t __attribute__((unused)) pixel_height,
-                               int32_t quality, int16_t __attribute__((unused)) extra)
-{
-  color_count = quality;
-}
-
-/*
- * Initialisation function, setting the colour filter, random seed and heading_increment
- */
 void orange_avoider_init(void)
 {
   // Initialise random values
   srand(time(NULL));
-  chooseRandomIncrementAvoidance();
 
   // bind our colorfilter callbacks to receive the color filter outputs
-  AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
+  // not sure if needed
+  // AbiBindMsgVISUAL_DETECTION(ORANGE_AVOIDER_VISUAL_DETECTION_ID, &color_detection_ev, color_detection_cb);
 }
 
-/*
- * Function that checks it is safe to move forwards, and then moves a waypoint forward or changes the heading
- */
 void orange_avoider_periodic(void)
 {
   // only evaluate our state machine if we are flying
@@ -105,53 +77,106 @@ void orange_avoider_periodic(void)
   }
 
   // compute current color thresholds
-  int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
+  // int32_t color_count_threshold = oa_color_count_frac * front_camera.output_size.w * front_camera.output_size.h;
+  
+  //retrieve flow values
+  //VERBOSE_PRINT("Optic Flow Left: %d  threshold: %d state: %d \n", flowleft, flowleft_threshold, navigation_state); *****GIVES COMPILE ERROR
+  //VERBOSE_PRINT("Optic Flow Right: %d  threshold: %d state: %d \n", flowright, flowright_threshold, navigation_state);
+  //VERBOSE_PRINT("Optic Flow Middle: %d  threshold: %d state: %d \n", flowmiddle, flowmiddle_threshold, navigation_state);
 
-  VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", color_count, color_count_threshold, navigation_state);
+  // float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
 
-  // update our safe confidence using color threshold
-  if(color_count < color_count_threshold){
-    obstacle_free_confidence++;
-  } else {
-    obstacle_free_confidence -= 2;  // be more cautious with positive obstacle detections
-  }
-
-  // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
-
-  float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
+  float moveDistance = fminf(maxDistance, 0.8f);
 
   switch (navigation_state){
     case SAFE:
       // Move waypoint forward
       moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
+
+      // set flowmiddle equal to 10 with a 10% probability
+      if (rand() % 10 == 0){
+        flowmiddle = 10;
+      } else {
+        flowmiddle = 0;
+      }
       if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         navigation_state = OUT_OF_BOUNDS;
-      } else if (obstacle_free_confidence == 0){
-        navigation_state = OBSTACLE_FOUND;
+      } else if (flowmiddle > flowmiddle_threshold){ // added this
+        navigation_state = OBSTACLE_MIDDLE;
+      } else if (flowleft > flowleft_threshold){ // added this
+        navigation_state = OBSTACLE_LEFT;
+      } else if (flowright > flowright_threshold){ // added this
+        navigation_state = OBSTACLE_RIGHT;
       } else {
         moveWaypointForward(WP_GOAL, moveDistance);
       }
 
       break;
-    case OBSTACLE_FOUND:
+    case OBSTACLE_LEFT:
       // stop
       waypoint_move_here_2d(WP_GOAL);
       waypoint_move_here_2d(WP_TRAJECTORY);
 
-      // randomly select new search direction
-      chooseRandomIncrementAvoidance();
-
-      navigation_state = SEARCH_FOR_SAFE_HEADING;
-
+      // set new waypoint 20 degrees to the right and 0.8 meter forward
+       for (int i = 0; i < 5; i++     ){
+          increase_nav_heading(6.f);
+        }
+      moveWaypointForward(WP_TRAJECTORY, 0.8f);
+      navigation_state = SAFE;
       break;
-    case SEARCH_FOR_SAFE_HEADING:
-      increase_nav_heading(heading_increment);
 
-      // make sure we have a couple of good readings before declaring the way safe
-      if (obstacle_free_confidence >= 2){
-        navigation_state = SAFE;
+    case OBSTACLE_RIGHT:
+      // stop
+      waypoint_move_here_2d(WP_GOAL);
+      waypoint_move_here_2d(WP_TRAJECTORY);
+
+      // set new waypoint 20 degrees to the left and 0.8 meter forward
+  
+      for (int i = 0; i < 5; i++     ){
+          increase_nav_heading(-6.f);
+        }
+  
+
+
+      moveWaypointForward(WP_TRAJECTORY, 0.8f);
+      navigation_state = SAFE;
+      break;
+
+    case OBSTACLE_MIDDLE:
+      // stop
+      waypoint_move_here_2d(WP_GOAL);
+      waypoint_move_here_2d(WP_TRAJECTORY);
+
+      // set new waypoint 45 degrees to the left and 0.8 meter forward if obstacle is on the left, set waypoint to the right, inside a for loop with range 3
+     
+
+      // make flowleft equal to 1 with 50% probability
+      if (rand() % 2 == 0){
+        flowleft_temp = 1;
+      } else {
+        flowleft_temp = -1;
+        
       }
+      increase_nav_heading(45.f);
+
+/*
+      for (int i = 0; i < 5; i++     ){
+        if (flowleft_temp > flowright_temp){
+          increase_nav_heading(9.f);
+          printf("left");
+        } else {
+          increase_nav_heading(-9.f);
+          printf("right");
+        }
+      }
+*/
+
+   
+
+      
+
+      moveWaypointForward(WP_TRAJECTORY, 0.1f);
+      navigation_state = SAFE;
       break;
     case OUT_OF_BOUNDS:
       increase_nav_heading(heading_increment);
@@ -160,12 +185,7 @@ void orange_avoider_periodic(void)
       if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         // add offset to head back into arena
         increase_nav_heading(heading_increment);
-
-        // reset safe counter
-        obstacle_free_confidence = 0;
-
-        // ensure direction is safe before continuing
-        navigation_state = SEARCH_FOR_SAFE_HEADING;
+        navigation_state = SAFE;
       }
       break;
     default:
@@ -219,6 +239,9 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   return false;
 }
 
+
+
+
 /*
  * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
  */
@@ -229,20 +252,3 @@ uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
   waypoint_move_xy_i(waypoint, new_coor->x, new_coor->y);
   return false;
 }
-
-/*
- * Sets the variable 'heading_increment' randomly positive/negative
- */
-uint8_t chooseRandomIncrementAvoidance(void)
-{
-  // Randomly choose CW or CCW avoiding direction
-  if (rand() % 2 == 0) {
-    heading_increment = 5.f;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
-  } else {
-    heading_increment = -5.f;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", heading_increment);
-  }
-  return false;
-}
-
