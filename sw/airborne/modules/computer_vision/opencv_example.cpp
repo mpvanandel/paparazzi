@@ -91,6 +91,7 @@
 #include "opencv_example.h"
 #include "opencv2/video/tracking.hpp"
 #include <opencv2/core/types.hpp>
+#include "modules/computer_vision/cv_opencvdemo.h"  //added
 
 #define MOVING_MEAN_COUNT 3
 
@@ -173,12 +174,19 @@ void farneback(char *img, float* output_flow, int width, int height, int width_i
       
       float flow_left_sum_tot = 0.0;
       float flow_right_sum_tot = 0.0;
-      for (int i=0; i<MOVING_MEAN_COUNT; i++)
-      {
-        flow_left_sum_tot += flow_left_arr[i];
-        flow_right_sum_tot += flow_right_arr[i];
-      }
-      
+/*
+    if (flow_reset_flag == 1)   //added
+    {
+        output_flow[0] = 0.0;
+        output_flow[1] = 0.0;
+    }
+*/
+    for (int i=0; i<MOVING_MEAN_COUNT; i++)
+        {
+            flow_left_sum_tot += flow_left_arr[i];
+            flow_right_sum_tot += flow_right_arr[i];
+        }
+
       frame_id++;
       output_flow[0] = flow_left_sum_tot;
       output_flow[1] = flow_right_sum_tot;

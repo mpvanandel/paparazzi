@@ -54,7 +54,15 @@
 
 #define WIDTH_2_PROCESS 200
 #define HEIGHT_2_PROCESS 50
-
+/*
+#ifdef _WIN32
+    #include <windows.h>
+    #define SLEEP(ms) Sleep(ms)
+#else
+    #include <unistd.h>
+    #define SLEEP(ms) usleep(ms*1000)
+#endif
+*/
 
 ///////////////////////////////////////////////////////////////////
 
@@ -80,19 +88,21 @@ float flowleft = 0.0f;
 float flowright = 0.0f;
 float flowmiddle = 0.0f;
 
-float flowleft_threshold = 5.0f;
-float flowright_threshold = 5.0f;
+//float flowleft_threshold = 5.0f;
+//float flowright_threshold = 5.0f;
 float flowmiddle_threshold = 5.0f;
 
 float right_left_normalizer = 1.0f;
 
-float flowleft_temp = 0.0f;
-float flowright_temp = 0.0f;
+//float flowleft_temp = 0.0f;
+//float flowright_temp = 0.0f;
+
+int flow_reset_flag = 0; //true = 1 and false = 0
 
 // float flowcombined_treshold = 10.0f;
 // if flowcombined > flowcombined_treshold, then turn 180 degrees (run away)
 
-float heading_increment = 5.f; 
+float heading_increment = 15.f;
 float maxDistance = 2.25;  
 
 float output_flow[2];
@@ -120,18 +130,19 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
     switch (navigation_state){
       case SAFE:
         // Move waypoint forward
-        moveWaypointForward(WP_TRAJECTORY, 0.5f);
+        flow_reset_flag = 0;
+        moveWaypointForward(WP_TRAJECTORY, 0.7f);
         moveWaypointForward(WP_GOAL, 0.5f);
 
-        right_left_normalizer = flowleft / flowright; // ADDED THIS, ABSULUTE VALUES DONT SEEM TO WORK SO WELL
+        right_left_normalizer = flowleft / flowright; // ADDED THIS, ABSOLUTE VALUES DONT SEEM TO WORK SO WELL
      
         if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
           navigation_state = OUT_OF_BOUNDS;
         } else if (flowmiddle > flowmiddle_threshold){ //  NOT YET BEING USED
           navigation_state = OBSTACLE_MIDDLE;
-        } else if (right_left_normalizer > 1.4){ // added this
+        } else if (right_left_normalizer >= 1.5){ // added this
           navigation_state = OBSTACLE_LEFT;
-        } else if (right_left_normalizer < 0.7){ // added this
+        } else if (right_left_normalizer <= 0.7){ // added this
           navigation_state = OBSTACLE_RIGHT;
         } else {
           moveWaypointForward(WP_GOAL, 0.5f);
@@ -144,11 +155,22 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         waypoint_move_here_2d(WP_TRAJECTORY);
 
         // CUSTOM CODE
-        increase_nav_heading(30.f); // SHOULD BE TWEAKED
+        //increase_nav_heading(15.f); // SHOULD BE TWEAKED
+
+        //for i from 1 to 5 increase_nav_heading(20.f) TO BE CHECKED
+        for (int i = 0; i < 5; ++i) {
+            increase_nav_heading(4.f);
+        }
+
+
+        // make a flag everytime increase_nav_heading is used
+        // if flag is true, then reset flow values to zero
+        // if flag is false, then do nothing
         printf("Turned Right");
+        flow_reset_flag = 1;
         moveWaypointForward(WP_TRAJECTORY, 0.8f);
         
-        right_left_normalizer = 1.0f; // THIS SHOULDNT BE NECESSARY BUT I DUNNO
+        //right_left_normalizer = 1.0f; // THIS SHOULDNT BE NECESSARY BUT I DUNNO
         navigation_state = SAFE;
         break;
 
@@ -156,14 +178,21 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         // stop
         waypoint_move_here_2d(WP_GOAL);
         waypoint_move_here_2d(WP_TRAJECTORY);
-
+        flow_reset_flag = true;
         
-        increase_nav_heading(-30.f); // SHOULD BE TWEAKED
+        //increase_nav_heading(-15.f); // SHOULD BE TWEAKED
+
+        //for i from 1 to 5 increase_nav_heading(-20.f) TO BE CHECKED
+        for (int i = 0; i < 5; ++i) {
+                increase_nav_heading(-4.f);
+            }
+
         printf("Turned Left");
+        flow_reset_flag = 1;
 
 
         moveWaypointForward(WP_TRAJECTORY, 0.8f);
-        right_left_normalizer = 1.0f;
+        //right_left_normalizer = 1.0f;
         navigation_state = SAFE;
         break;
 
@@ -172,13 +201,25 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
       waypoint_move_here_2d(WP_GOAL);
       waypoint_move_here_2d(WP_TRAJECTORY);
 
-      increase_nav_heading(45.f);
-      moveWaypointForward(WP_TRAJECTORY, 0.1f);
+          if (right_left_normalizer >= 1.0)
+            {
+                for (int i = 0; i < 5; ++i) {
+                    increase_nav_heading(-4.f);
+                }
+            }
+          else {
+              for (int i = 0; i < 5; ++i) {
+                  increase_nav_heading(-4.f);
+              }
+            }
+      //increase_nav_heading(15.f);
+      flow_reset_flag = 1;
+      moveWaypointForward(WP_TRAJECTORY, 0.8f);
       navigation_state = SAFE;
       break;
     case OUT_OF_BOUNDS:
       increase_nav_heading(heading_increment);
-      moveWaypointForward(WP_TRAJECTORY, 1.5f);
+      moveWaypointForward(WP_TRAJECTORY, 1.2f);
 
       if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         // add offset to head back into arena
