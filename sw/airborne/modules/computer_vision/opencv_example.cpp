@@ -123,7 +123,7 @@ void calculate_magnitudes_flow(Mat& mag, Mat prvs, Mat next)
 
 
 
-void farneback(char *img, float* output_flow, int width, int height, int width_img, int height_img)
+void farneback(char *img, float* output_flow, int width, int height, int width_img, int height_img, int flow_reset_flag)
 {
     std::cout<<"farneback"<<"\n";
     Mat next_frame(width_img, height_img, CV_8UC2, img); 

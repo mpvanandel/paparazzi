@@ -102,7 +102,7 @@ int flow_reset_flag = 0; //true = 1 and false = 0
 // float flowcombined_treshold = 10.0f;
 // if flowcombined > flowcombined_treshold, then turn 180 degrees (run away)
 
-float heading_increment = 15.f;
+float heading_increment = 10.f;
 float maxDistance = 2.25;  
 
 float output_flow[2];
@@ -114,7 +114,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
 {
     // action act = STANDBY;
     if (img->type == IMAGE_YUV422) {
-        farneback((char *) img->buf, output_flow, WIDTH_2_PROCESS, HEIGHT_2_PROCESS, img->w, img->h);
+        farneback((char *) img->buf, output_flow, WIDTH_2_PROCESS, HEIGHT_2_PROCESS, img->w, img->h, flow_reset_flag);
        
     }
     //increase_nav_heading(6.f);
@@ -131,7 +131,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
       case SAFE:
         // Move waypoint forward
         flow_reset_flag = 0;
-        moveWaypointForward(WP_TRAJECTORY, 0.7f);
+        moveWaypointForward(WP_TRAJECTORY, 0.8f);
         moveWaypointForward(WP_GOAL, 0.5f);
 
         right_left_normalizer = flowleft / flowright; // ADDED THIS, ABSOLUTE VALUES DONT SEEM TO WORK SO WELL
@@ -140,12 +140,12 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
           navigation_state = OUT_OF_BOUNDS;
         } else if (flowmiddle > flowmiddle_threshold){ //  NOT YET BEING USED
           navigation_state = OBSTACLE_MIDDLE;
-        } else if (right_left_normalizer >= 1.5){ // added this
+        } else if (right_left_normalizer >= 1.0){ // added this
           navigation_state = OBSTACLE_LEFT;
-        } else if (right_left_normalizer <= 0.7){ // added this
+        } else if (right_left_normalizer < 1.0){ // added this
           navigation_state = OBSTACLE_RIGHT;
         } else {
-          moveWaypointForward(WP_GOAL, 0.5f);
+          moveWaypointForward(WP_GOAL, 0.8f);
         }
 
         break;
@@ -155,13 +155,15 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         waypoint_move_here_2d(WP_TRAJECTORY);
 
         // CUSTOM CODE
-        //increase_nav_heading(15.f); // SHOULD BE TWEAKED
-
+        increase_nav_heading(5.f);
+        increase_nav_heading(5.f);
+        increase_nav_heading(5.f);            // SHOULD BE TWEAKED
+        /*
         //for i from 1 to 5 increase_nav_heading(20.f) TO BE CHECKED
         for (int i = 0; i < 5; ++i) {
             increase_nav_heading(4.f);
         }
-
+        */
 
         // make a flag everytime increase_nav_heading is used
         // if flag is true, then reset flow values to zero
@@ -179,14 +181,16 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         waypoint_move_here_2d(WP_GOAL);
         waypoint_move_here_2d(WP_TRAJECTORY);
         flow_reset_flag = true;
-        
-        //increase_nav_heading(-15.f); // SHOULD BE TWEAKED
 
+        increase_nav_heading(-5.f);
+        increase_nav_heading(-5.f);
+        increase_nav_heading(-5.f);   // SHOULD BE TWEAKED
+        /*
         //for i from 1 to 5 increase_nav_heading(-20.f) TO BE CHECKED
         for (int i = 0; i < 5; ++i) {
                 increase_nav_heading(-4.f);
             }
-
+        */
         printf("Turned Left");
         flow_reset_flag = 1;
 
@@ -219,7 +223,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
       break;
     case OUT_OF_BOUNDS:
       increase_nav_heading(heading_increment);
-      moveWaypointForward(WP_TRAJECTORY, 1.2f);
+      moveWaypointForward(WP_TRAJECTORY, 0.8f);
 
       if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         // add offset to head back into arena
@@ -270,7 +274,7 @@ uint8_t increase_nav_heading(float incrementDegrees)
   // for performance reasons the navigation variables are stored and processed in Binary Fixed-Point format
   nav_heading = ANGLE_BFP_OF_REAL(new_heading);
 
-  VERBOSE_PRINT("Increasing heading to %f\n", DegOfRad(new_heading));
+ // VERBOSE_PRINT("Increasing heading to %f\n", DegOfRad(new_heading));
   return false;
 }
 
@@ -295,9 +299,9 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   // Now determine where to place the waypoint you want to go to
   new_coor->x = stateGetPositionEnu_i()->x + POS_BFP_OF_REAL(sinf(heading) * (distanceMeters));
   new_coor->y = stateGetPositionEnu_i()->y + POS_BFP_OF_REAL(cosf(heading) * (distanceMeters));
-  VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,	
-                POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
-                stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
+  //VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
+  //POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
+  //stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
   return false;
 }
 
@@ -305,9 +309,9 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
 
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
 {
-  VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
-                POS_FLOAT_OF_BFP(new_coor->y));
-  waypoint_move_xy_i(waypoint, new_coor->x, new_coor->y);
+  //VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
+  //POS_FLOAT_OF_BFP(new_coor->y));
+  //waypoint_move_xy_i(waypoint, new_coor->x, new_coor->y);
   return false;
 }
 
