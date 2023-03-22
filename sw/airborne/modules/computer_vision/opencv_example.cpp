@@ -29,65 +29,12 @@
 #endif
 
 
-// static uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
-// static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
-// static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
-// static uint8_t increase_nav_heading(float incrementDegrees);
-
-
-
-
-
-
 ///////////////////////////////////////////////////////////////////////////////////////
 
-// #include "opencv_example.h"
 
-
-
-// using namespace std;
-// #include <opencv2/core/core.hpp>
-// #include <opencv2/imgproc/imgproc.hpp>
-
-// using namespace cv;
-// #include "opencv_image_functions.h"
-// #include "modules/computer_vision/cv.h"
-
-
-// int opencv_example(char *img, int width, int height)
-// {
-//   // Create a new image, using the original bebop image.
-//   struct image_t *a;
-  
-//   Mat M(height, width, CV_8UC2, img);
-//   Mat image;
-
-// #if OPENCVDEMO_GRAYSCALE
-//   //  Grayscale image example
-//   cvtColor(M, image, CV_YUV2GRAY_Y422);
-//   // Canny edges, only works with grayscale image
-//   int edgeThresh = 35;
-//   Canny(image, image, edgeThresh, edgeThresh * 3);
-//   // Convert back to YUV422, and put it in place of the original image
-//   grayscale_opencv_to_yuv422(image, img, width, height);
-// #else // OPENCVDEMO_GRAYSCALE
-//   // Color image example
-//   // Convert the image to an OpenCV Mat
-//   cvtColor(M, image, CV_YUV2BGR_Y422);
-//   // Blur it, because we can
-//   blur(image, image, Size(5, 5));
-//   // Convert back to YUV422 and put it in place of the original image
-//   colorbgr_opencv_to_yuv422(image, img, width, height);
-// #endif // OPENCVDEMO_GRAYSCALE
-
-//   return 0;
-// }
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-// #include "opencv2/core/hal/intrin.hpp"
-// #include <opencv2/highgui/highgui.hpp>
-// #include "opencv2\highgui.hpp"
 #include "opencv_example.h"
 #include "opencv2/video/tracking.hpp"
 #include <opencv2/core/types.hpp>
@@ -119,7 +66,6 @@ void calculate_magnitudes_flow(Mat& mag, Mat prvs, Mat next)
     split(flow, flow_parts);
     magnitude(flow_parts[0], flow_parts[1], mag);
 }
-
 
 
 void farneback(char *img, float* output_flow, int width, int height, int width_img, int height_img)
@@ -187,68 +133,6 @@ void farneback(char *img, float* output_flow, int width, int height, int width_i
       previous_frame_right = next_frame_right;
       std::cout<<"left: "<<output_flow[0]<<", right: "<<output_flow[1]<<"\n";
 
-      // increase_nav_heading(6.f);
-     // moveWaypointForward(WP_TRAJECTORY, 0.8f);
      
 }
 
-
-
-
-
-// int main()
-// {
-//   std::string filename = "/home/matthijs/paparazzi/videos/vlc-record-2023-03-10-09h59m06s-rtp_5000.sdp-.avi";
-//   farneback_playback(filename, 200, 50);
-//   return 0;
-// }
-
-
-
-
-//////////////////////////////////////////////
-
-
-// /*
-//  * Calculates coordinates of distance forward and sets waypoint 'waypoint' to those coordinates
-//  */
-// uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
-// {
-//   struct EnuCoor_i new_coor;
-//   calculateForwards(&new_coor, distanceMeters);
-//   moveWaypoint(waypoint, &new_coor);
-//   return false;
-// }
-
-// /*
-//  * Calculates coordinates of a distance of 'distanceMeters' forward w.r.t. current position and heading
-//  */
-// uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
-// {
-//   float heading  = stateGetNedToBodyEulers_f()->psi;
-
-//   // Now determine where to place the waypoint you want to go to
-//   new_coor->x = stateGetPositionEnu_i()->x + POS_BFP_OF_REAL(sinf(heading) * (distanceMeters));
-//   new_coor->y = stateGetPositionEnu_i()->y + POS_BFP_OF_REAL(cosf(heading) * (distanceMeters));
-//   VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,	
-//                 POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y),
-//                 stateGetPositionEnu_f()->x, stateGetPositionEnu_f()->y, DegOfRad(heading));
-//   return false;
-// }
-
-
-// /*
-//  * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
-//  */
-// uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
-// {
-//   VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
-//                 POS_FLOAT_OF_BFP(new_coor->y));
-//   waypoint_move_xy_i(waypoint, new_coor->x, new_coor->y);
-//   return false;
-// }
-
-// // }
-// //  if(!autopilot_in_flight()){
-// // //    return;
-// // //  }

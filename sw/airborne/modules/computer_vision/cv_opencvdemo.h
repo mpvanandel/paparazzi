@@ -27,6 +27,7 @@
 #define CV_OPENCVDEMO_H
 
 // extern void opencvdemo_init(void);
+extern void periodic_optical_flow(void);
 extern void calc_action_optical_flow_init(void);
 extern void calc_action_optical_flow_periodic(void);
 #endif

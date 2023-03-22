@@ -17,6 +17,7 @@
 
   </header>
   <init fun="calc_action_optical_flow_init()"/>
+  <periodic fun="periodic_optical_flow()" freq="30"/> 
   <makefile target="ap">
     <file name="cv_opencvdemo.c"/>
     <file name="opencv_example.cpp"/>

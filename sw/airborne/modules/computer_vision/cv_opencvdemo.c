@@ -107,12 +107,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         farneback((char *) img->buf, output_flow, WIDTH_2_PROCESS, HEIGHT_2_PROCESS, img->w, img->h);
        
     }
-    //increase_nav_heading(6.f);
-    //moveWaypointForward(WP_TRAJECTORY, 0.8f);
-    //moveWaypointForward(WP_GOAL, 0.5);
-    //
 
-    // THIS SHOULD BE CORRECTLY ADDED *******************
     flowleft = output_flow[0];
     flowright = output_flow[1];
     printf("flowleft: %f, flowright: %f)", flowleft, flowright);
@@ -160,9 +155,9 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         
         increase_nav_heading(-30.f); // SHOULD BE TWEAKED
         printf("Turned Left");
-
-
         moveWaypointForward(WP_TRAJECTORY, 0.8f);
+
+
         right_left_normalizer = 1.0f;
         navigation_state = SAFE;
         break;
@@ -202,15 +197,11 @@ void calc_action_optical_flow_init(void)
 
 
 
-
-
-
 // moveWaypointForward(WP_TRAJECTORY, 0.8f);
 
-void calc_action_optical_flow_periodic(void)
+void periodic_optical_flow(void)
 {
-    printf("out: %f",output_flow[0]);
-
+    printf("periodic\n");
 }
 // define variables
 ////////////////////////////////////////////////////////////////////////////////////////////

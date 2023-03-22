@@ -9,7 +9,12 @@
         "editor.tabSize": 4,
     },
     "files.associations": {
-        "Makefile.*": "makefile"
+        "Makefile.*": "makefile",
+        "*.evaluator": "c",
+        "*.traits": "c",
+        "alignedvector3": "c",
+        "fft": "c",
+        "mprealsupport": "c"
     },
     "C_Cpp.dimInactiveRegions": false,
     "esbonio.sphinx.confDir": "",

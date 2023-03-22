@@ -23,6 +23,8 @@
  * A simple module showing what you can do with opencv on the bebop.
  */
 
+
+
 #ifndef OPENCV_EXAMPLE_H
 #define OPENCV_EXAMPLE_H
 
