@@ -17,16 +17,15 @@ using namespace cv;
 
 int frame_id = 0;
 float flow_arr[MOVING_MEAN_COUNT][3];
-auto range_width = Range((int) (width_img/2 - width/2),(int) (width_img/2 + width/2));
-auto range_height_left = Range((int) (height_img/2 - height/2),(int) (height_img/2));
-auto range_height_middle = Range((int) (height_img/2 - height/4),(int) (height_img/2 + height/4))
-auto range_height_right =  Range((int) (height_img/2),(int) (height_img/2 + height/2));
 Mat previous_frame_left, previous_frame_right, previous_frame_middle;
 
 void scale_mat(const Mat matrix, Mat& matrix_left, Mat& matrix_right, Mat& matrix_middle, const int width, const int height, const int width_img, const int height_img);
 void scale_mat(const Mat matrix, Mat& matrix_left, Mat& matrix_right, Mat& matrix_middle, const int width, const int height, const int width_img, const int height_img)
 {
   auto range_width = Range((int) (width_img/2 - width/2),(int) (width_img/2 + width/2));
+  auto range_height_left = Range((int) (height_img/2 - height/2),(int) (height_img/2));
+  auto range_height_middle = Range((int) (height_img/2 - height/4),(int) (height_img/2 + height/4));
+  auto range_height_right =  Range((int) (height_img/2),(int) (height_img/2 + height/2));
   matrix_left = matrix(range_width, range_height_left);
   matrix_middle = matrix(range_width, range_height_middle);
   matrix_right = matrix(range_width, range_height_right);

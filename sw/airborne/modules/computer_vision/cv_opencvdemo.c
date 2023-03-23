@@ -73,6 +73,7 @@ enum navigation_state_t {
   OBSTACLE_RIGHT,
   OBSTACLE_MIDDLE,
   OUT_OF_BOUNDS,
+  TURNING,
 };
 
 enum navigation_state_t navigation_state = SAFE;
@@ -88,11 +89,15 @@ float right_left_normalizer = 1.0f;
 
 float flowleft_temp = 0.0f;
 float flowright_temp = 0.0f;
+float desired_heading;
 // float flowcombined_treshold = 10.0f;
 // if flowcombined > flowcombined_treshold, then turn 180 degrees (run away)
 
 float heading_increment = 5.f; 
 float maxDistance = 2.25;  
+float heading_increment_right_left = 30.f;
+float heading_increment_middle = 45.f;
+float yaw_th = 3.f;
 
 float output_flow[3];
 bool heading_changing = false;
@@ -102,6 +107,9 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
 
 
 {
+    if(!autopilot_in_flight()){
+    return;
+  }
     // action act = STANDBY;
     if (img->type == IMAGE_YUV422) {
         farneback((char *) img->buf, output_flow, WIDTH_2_PROCESS, HEIGHT_2_PROCESS, img->w, img->h, heading_changing);
@@ -113,6 +121,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
     //
 
     // THIS SHOULD BE CORRECTLY ADDED *******************
+    printf("state: %d\n", (int)navigation_state);
     flowleft = output_flow[0];
     flowright = output_flow[1];
     flowmiddle = output_flow[2];
@@ -128,11 +137,11 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
      
         if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
           navigation_state = OUT_OF_BOUNDS;
-        } else if (flowmiddle > flowmiddle_threshold){ //  NOT YET BEING USED
+        } else if (flowmiddle <0){ // flowmiddle_threshold){ //  NOT YET BEING USED
           navigation_state = OBSTACLE_MIDDLE;
-        } else if (right_left_normalizer > 1.4){ // added this
+        } else if (right_left_normalizer > 1.2){ // added this
           navigation_state = OBSTACLE_LEFT;
-        } else if (right_left_normalizer < 0.7){ // added this
+        } else if (right_left_normalizer < 0.82){ // added this
           navigation_state = OBSTACLE_RIGHT;
         } else {
           moveWaypointForward(WP_GOAL, 0.5f);
@@ -146,13 +155,14 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         waypoint_move_here_2d(WP_TRAJECTORY);
 
         // CUSTOM CODE
-        increase_nav_heading(30.f); // SHOULD BE TWEAKED
+        increase_nav_heading(heading_increment_right_left); // SHOULD BE TWEAKED
+        desired_heading =  stateGetNedToBodyEulers_f()->psi + heading_increment_right_left;
         heading_changing = true;
         printf("Turned Right");
         moveWaypointForward(WP_TRAJECTORY, 0.8f);
         
         right_left_normalizer = 1.0f; // THIS SHOULDNT BE NECESSARY BUT I DUNNO
-        navigation_state = SAFE;
+        navigation_state = TURNING;
         break;
 
       case OBSTACLE_RIGHT:
@@ -161,14 +171,15 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         waypoint_move_here_2d(WP_TRAJECTORY);
 
         
-        increase_nav_heading(-30.f); // SHOULD BE TWEAKED
+        increase_nav_heading(-heading_increment_right_left); // SHOULD BE TWEAKED
+        desired_heading =  stateGetNedToBodyEulers_f()->psi - heading_increment_right_left;
         heading_changing = true;
         printf("Turned Left");
 
 
         moveWaypointForward(WP_TRAJECTORY, 0.8f);
         right_left_normalizer = 1.0f;
-        navigation_state = SAFE;
+        navigation_state = TURNING;
         break;
 
     case OBSTACLE_MIDDLE: // NOT YET IN USE; NEXT STEP
@@ -176,10 +187,10 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
       waypoint_move_here_2d(WP_GOAL);
       waypoint_move_here_2d(WP_TRAJECTORY);
 
-      increase_nav_heading(45.f);
+      increase_nav_heading(heading_increment_middle);
       heading_changing = true;
       moveWaypointForward(WP_TRAJECTORY, 0.1f);
-      navigation_state = SAFE;
+      navigation_state = TURNING;
       break;
     case OUT_OF_BOUNDS:
       increase_nav_heading(heading_increment);
@@ -189,6 +200,13 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
       if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         // add offset to head back into arena
         increase_nav_heading(heading_increment);
+        navigation_state = TURNING;
+      }
+    case TURNING:
+      // increase_nav_heading(desired_heading-stateGetNedToBodyEulers_f()->psi);
+      printf("%f, %f\n", desired_heading, stateGetNedToBodyEulers_f()->psi);
+      if ((abs(desired_heading - stateGetNedToBodyEulers_f()->psi) < yaw_th) || (abs(360 - abs(desired_heading - stateGetNedToBodyEulers_f()->psi)) < yaw_th))
+      {
         navigation_state = SAFE;
       }
       break;
@@ -202,6 +220,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
 void calc_action_optical_flow_init(void)
 {
     cv_add_to_device(&OPENCVDEMO_CAMERA, optical_flow_func, OPENCVDEMO_FPS, 0);
+    desired_heading = stateGetNedToBodyEulers_f()->psi;
     output_flow[0] = 0.0;
     output_flow[1] = 0.0;
 }
