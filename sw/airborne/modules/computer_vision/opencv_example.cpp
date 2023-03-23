@@ -17,14 +17,19 @@ using namespace cv;
 
 int frame_id = 0;
 float flow_arr[MOVING_MEAN_COUNT][3];
+auto range_width = Range((int) (width_img/2 - width/2),(int) (width_img/2 + width/2));
+auto range_height_left = Range((int) (height_img/2 - height/2),(int) (height_img/2));
+auto range_height_middle = Range((int) (height_img/2 - height/4),(int) (height_img/2 + height/4))
+auto range_height_right =  Range((int) (height_img/2),(int) (height_img/2 + height/2));
 Mat previous_frame_left, previous_frame_right, previous_frame_middle;
+
 void scale_mat(const Mat matrix, Mat& matrix_left, Mat& matrix_right, Mat& matrix_middle, const int width, const int height, const int width_img, const int height_img);
 void scale_mat(const Mat matrix, Mat& matrix_left, Mat& matrix_right, Mat& matrix_middle, const int width, const int height, const int width_img, const int height_img)
 {
   auto range_width = Range((int) (width_img/2 - width/2),(int) (width_img/2 + width/2));
-  matrix_left = matrix(range_width, Range((int) (height_img/2 - height/2),(int) (height_img/2)));
-  matrix_middle = matrix(range_width, Range((int) (height_img/2 - height/4),(int) (height_img/2 + height/4)));
-  matrix_right = matrix(range_width, Range((int) (height_img/2),(int) (height_img/2 + height/2)));
+  matrix_left = matrix(range_width, range_height_left);
+  matrix_middle = matrix(range_width, range_height_middle);
+  matrix_right = matrix(range_width, range_height_right);
   
 }
 void calculate_magnitudes_flow(Mat& mag, const Mat prvs, const Mat next);
@@ -35,6 +40,19 @@ void calculate_magnitudes_flow(Mat& mag, const Mat prvs, const Mat next)
     Mat flow_parts[2];
     split(flow, flow_parts);
     magnitude(flow_parts[0], flow_parts[1], mag);
+}
+
+void reset_flow_arr(float* output_flow);
+void reset_flow_arr(float* output_flow)
+{
+  for (int i=0; i<3; i++)
+    {
+    for (int j=0; j<MOVING_MEAN_COUNT; j++)
+    {
+      flow_arr[j][i] = 0.0;
+    }
+    output_flow[i] = 0;
+  }
 }
 
 void calculate_output_flow(const Mat mag, float* output_flow, const int idx);
@@ -59,8 +77,7 @@ void calculate_output_flow(const Mat mag, float* output_flow, const int idx)
   output_flow[idx] = flow_sum_tot;
 }
 
-
-void farneback(char *img, float* output_flow, int width, int height, int width_img, int height_img)
+void farneback(char *img, float* output_flow, int width, int height, int width_img, int height_img, const bool heading_changing)
 {
     std::cout<<"farneback"<<"\n";
     Mat next_frame(width_img, height_img, CV_8UC2, img); 
@@ -72,15 +89,10 @@ void farneback(char *img, float* output_flow, int width, int height, int width_i
     Mat next_frame_left, next_frame_right, next_frame_middle;
     scale_mat(next_frame_gray, next_frame_left, next_frame_right, next_frame_middle, width, height, width_img, height_img);
 
-    if (frame_id==0)
+    if (frame_id==0 || heading_changing)
     {
-    for (int i=0; i<MOVING_MEAN_COUNT; i++)
-    {
-      for (int j=0; j<3; j++)
-      {
-        flow_arr[i][j] = 0.0;
-      }
-    }
+      reset_flow_arr(output_flow);
+      std::cout<<"reset"<<"\n";
       previous_frame_left = next_frame_left;
       previous_frame_middle = next_frame_middle;
       previous_frame_right = next_frame_right;
@@ -100,10 +112,12 @@ void farneback(char *img, float* output_flow, int width, int height, int width_i
     calculate_output_flow(mag_right, output_flow, RIGHT_IDX);
     calculate_output_flow(mag_middle, output_flow, MIDDLE_IDX);
 
-      previous_frame_left = next_frame_left;
-      previous_frame_right = next_frame_right;
-      previous_frame_middle = next_frame_middle;
-      std::cout<<"left: "<<output_flow[0]<<", right: "<<output_flow[1]<<"middle: "<<output_flow[2]<<"\n"; 
+    previous_frame_left = next_frame_left;
+    previous_frame_right = next_frame_right;
+    previous_frame_middle = next_frame_middle;
+  
+    frame_id++;
+      // std::cout<<"left: "<<output_flow[0]<<", right: "<<output_flow[1]<<"middle: "<<output_flow[2]<<"\n"; 
 }
 
 
