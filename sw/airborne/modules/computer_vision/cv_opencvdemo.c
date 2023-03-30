@@ -129,7 +129,7 @@ void yaw_cancel(struct image_t *img, float flow_left, float flow_right, float fl
 
 
 
-void image_editing(struct image_t *img, float flow_left, float flow_right, float flow_middle) {
+void image_editing(struct image_t *img, float right_left_normaliser, float flow_middle_divergence) {
 //    Mat image(width_img, height_img, CV_8UC2, img);
 //    Mat matrix_left = image(Range(95,145), Range(160,260));
 //    Mat matrix_right = image(Range(95,145),Range(260,360));
@@ -145,8 +145,18 @@ void image_editing(struct image_t *img, float flow_left, float flow_right, float
     int middle_start = height_img/2 - height/4; int middle_end = height_img/2 + height/4 ;
     int right_start = height_img/2; int right_end = height_img/2 + height/2;
     int chosen_start; int chosen_end;
-
-
+    if(right_left_normalizer < right_obstacle_threshold){
+        chosen_start = right_start;
+        chosen_end = right_end;
+    }
+    if(right_left_normalizer > left_obstacle_threshold){
+        chosen_start = left_start;
+        chosen_end = left_end;
+    }
+    else{
+        chosen_start = middle_start;
+        chosen_end = middle_end;
+    }
     // L_R = 0 means obstacle left
     for (uint16_t y = chosen_start; y < chosen_end; y++) {
         for (uint16_t x = row_start; x < row_end; x++) {
@@ -229,7 +239,6 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
     }
 
     LOG("after farneback")
-    yaw_cancel(img, output_flow[0], output_flow[1], flowmiddle_divergence);
 
     //increase_nav_heading(6.f);
     //moveWaypointForward(WP_TRAJECTORY, movedistance);
@@ -256,10 +265,12 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
     printf("flowmiddle_divergence_prev: %f \n", flowmiddle_divergence_prev);
     printf("Navigation state: %d \n", navigation_state);
 
+    navigation_state = IJUSTTURNED1;
+
 
  
     if (right_left_normalizer < right_obstacle_threshold|| right_left_normalizer > left_obstacle_threshold|| flowmiddle_divergence > 1.5){
-        image_editing(img,flowleft,flowright,flowmiddle);
+        image_editing(img,right_left_normalizer,flowmiddle_divergence);
     }
     else{
 //        printf("No flow above threshold \n");
@@ -319,7 +330,7 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         else if (flowmiddle  < 500.0f){    // TWEAKABLE
           printf("Obstacle MIDDLE \n");
           increase_nav_heading(90.0f);
-          navigation_state = SAFE
+          navigation_state = SAFE;
           break; 
         } 
         
@@ -332,14 +343,14 @@ struct image_t *optical_flow_func(struct image_t *img, int camera_id)
         break;
 
       case IJUSTTURNED1: // Stands still for a little bit 
-      moveWaypointForward(WP_TRAJECTORY, 0.5 * movedistance);
-      moveWaypointForward(WP_GOAL, 0.5* movedistance);
+      // moveWaypointForward(WP_TRAJECTORY, 0.5 * movedistance);
+      // moveWaypointForward(WP_GOAL, 0.5* movedistance);
       LOG("IJUSTTURNED1")
       counter++;
       printf("counter: %d \n", counter);
 
       if (counter == 5){  // TWEAKABLE
-        navigation_state = IJUSTTURNED2;
+        navigation_state = IJUSTTURNED1;
         counter = 0;
       }
 
