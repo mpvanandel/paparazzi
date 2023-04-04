@@ -62,14 +62,6 @@
 #endif
 #define WIDTH_2_PROCESS 30   // TWEAKABLE
 #define HEIGHT_2_PROCESS 140 // TWEAKABLE
-// #define FLOWMIDDLE_DIV_LOWER 0.80f
-// #define FLOWMIDDLE_ABS_MIN 0.0f // Not too sure whether using this is a smart move, otherwise set to 0
-// #define LEFTFLOW_TURNING_TH 1.22f
-// #define RIGHTFLOW_TURNING_TH 0.75f
-// #define COUNTER2_MAX 9
-// #define HEADING_INC_LEFT_RIGHT 45.f
-// #define HEADING_INC_MIDDLE 60.f
-// #define HEADING_INC_OUT_OF_BOUND 90.f
 
 float movedistance = 1.2f;     // TWEAKABLE (changes spead)
 
@@ -83,25 +75,8 @@ float x_prev;
 float y_prev;
 float tot_dist = 0.f;
 
-
-// // ::google::protobuf::internal::GetCurrentTime(&seconds, &nanoseconds);
-// // int64_t seconds;
-// // int32_t nanoseconds;
 #define LOG(x) fprintf(stderr, "LOG: %s:%d %s %lu \n", __FILE__, __LINE__, x, clock());
 // // #define LOG(x)
-
-
-///////////////////////////////////////////////////////////////////
-
-
-// static uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
-// static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
-// static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
-// static uint8_t increase_nav_heading(float incrementDegrees);
-
-float oa_color_count_frac = 0.18f; // ***HAVE TO DEFINE THIS HERE TO GET IT TO COMPILE
-
-// Define navigation states
 
 
 
